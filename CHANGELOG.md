@@ -5,14 +5,11 @@
 
 ## [Unreleased]
 
-### Добавлено
-
-- Каркас документации: PRD, архитектура, модель данных, API, интеграции, безопасность, runbook.
-- ADR: Rails+Hotwire, PostgreSQL/pgvector, голос→Ollama→IntentRouter, Solid Queue.
-- Папка `docs/troubleshooter/` с шаблоном записей об ошибках.
-- `CONTRIBUTING.md`, обновлённый корневой `README.md`, оглавление `docs/README.md`.
-
 ### Изменено
+
+- Публичный репозиторий: каталоги `.claude/` и `docs/` не отслеживаются Git (внутренние материалы команды).
+
+### Добавлено
 
 - (по мере разработки)
 

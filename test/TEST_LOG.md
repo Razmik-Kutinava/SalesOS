@@ -241,3 +241,11 @@
 **Сделано:** `?tab=leads|rag`, навигация под шапкой, RAG вынесен на отдельную вкладку; редиректы `knowledge_documents` с `tab=rag`.
 
 **Прогон:** `ruby bin/rails test` — **143 runs, 328 assertions, 0 failures, 0 errors, 5 skips**.
+
+---
+
+## 2026-03-29 — публичный репо: без `.claude/` и `docs/`
+
+**Сделано:** `.gitignore` — `/.claude/`, `/docs/`; сняты с трека; README/CONTRIBUTING/CHANGELOG; удалены ветки Dependabot на origin.
+
+**Прогон:** `ruby bin/rails test` — **143 runs, 328 assertions, 0 failures, 0 errors, 5 skips**.
