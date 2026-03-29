@@ -1,0 +1,31 @@
+<div class="page"
+     data-controller="voice"
+     data-voice-endpoint-value="<%= voice_lead_path(@lead) %>">
+  <header class="page-header">
+    <p><%= link_to "← К списку", leads_path %></p>
+    <h1><%= @lead.company_name.presence || "Лид ##{@lead.id}" %></h1>
+    <%= button_to "Выйти", logout_path, method: :delete, class: "btn-secondary" %>
+  </header>
+
+  <section class="lead-card">
+    <dl>
+      <dt>Контакт</dt><dd><%= @lead.contact_name.presence || "—" %></dd>
+      <dt>Email</dt><dd><%= @lead.email.presence || "—" %></dd>
+      <dt>Телефон</dt><dd><%= @lead.phone.presence || "—" %></dd>
+      <dt>Стадия</dt><dd><%= @lead.stage %></dd>
+    </dl>
+  </section>
+
+  <section class="voice-panel" data-voice-target="panel">
+    <h2>Голос</h2>
+    <p class="hint">Запись с микрофона → Whisper → Ollama → действие в CRM (заметка, поля, задача, заявка на удаление).</p>
+    <p>
+      <button type="button" data-action="voice#start" data-voice-target="startBtn">Записать</button>
+      <button type="button" data-action="voice#stop" data-voice-target="stopBtn" disabled>Стоп и отправить</button>
+    </p>
+    <p data-voice-target="status" class="status-line" aria-live="polite"></p>
+    <pre data-voice-target="transcript" class="transcript-box"></pre>
+    <pre data-voice-target="reply" class="reply-box"></pre>
+  </section>
+
+</div>

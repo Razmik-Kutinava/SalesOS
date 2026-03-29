@@ -1,0 +1,67 @@
+<section class="rag-panel" aria-labelledby="rag-heading">
+  <h2 id="rag-heading">База знаний (RAG)</h2>
+  <p class="hint">PDF или текстовая заметка → чанки и эмбеддинги Ollama (<code>OLLAMA_EMBED_MODEL</code>). Ниже — вопрос по уже проиндексированным фрагментам (модель <code>OLLAMA_MODEL</code>).</p>
+
+  <div class="rag-chat" data-controller="rag-chat" data-rag-chat-query-url-value="<%= knowledge_query_path %>">
+    <h3 class="rag-subheading">Вопрос по базе</h3>
+    <%= form_with url: "#", class: "rag-chat-form", data: { action: "submit->rag-chat#ask" } do %>
+      <label for="rag_question" class="sr-only">Вопрос</label>
+      <textarea id="rag_question" class="rag-textarea" rows="2" placeholder="Например: какая скидка по акции?" data-rag-chat-target="question"></textarea>
+      <p><button type="submit" class="btn-primary">Спросить</button></p>
+    <% end %>
+    <p class="rag-chat-status muted" data-rag-chat-target="status"></p>
+    <div class="rag-chat-answer" data-rag-chat-target="answer"></div>
+    <div class="rag-chat-sources" data-rag-chat-target="sources"></div>
+  </div>
+
+  <h3 class="rag-subheading">Текст в базу (on-the-fly)</h3>
+  <%= form_with url: text_knowledge_documents_path, method: :post, class: "rag-text-form" do %>
+    <%= hidden_field_tag :lead_id, params[:lead_id] %>
+    <%= hidden_field_tag :tab, "rag" %>
+    <div class="rag-upload-row">
+      <%= label_tag :ktitle, "Заголовок (необязательно)" %>
+      <%= text_field_tag :title, "", class: "rag-input", id: :ktitle, placeholder: "Например: Условия акции" %>
+    </div>
+    <div class="rag-upload-row">
+      <%= label_tag :body_text, "Текст (от 10 символов)" %>
+      <%= text_area_tag :body_text, "", class: "rag-textarea", rows: 4, required: true, placeholder: "Вставьте фрагмент прайса, условия, заметку…" %>
+    </div>
+    <p><%= submit_tag "Добавить в индекс", class: "btn-primary" %></p>
+  <% end %>
+
+  <h3 class="rag-subheading">PDF с диска</h3>
+  <%= form_with url: knowledge_documents_path, method: :post, multipart: true, class: "rag-upload-form" do |f| %>
+    <%= hidden_field_tag :lead_id, params[:lead_id] %>
+    <%= hidden_field_tag :tab, "rag" %>
+    <div class="rag-upload-row">
+      <%= label_tag :title, "Название (необязательно)" %>
+      <%= text_field_tag :title, "", class: "rag-input", placeholder: "Например: Прайс Acme 2026" %>
+    </div>
+    <div class="rag-upload-row">
+      <%= label_tag :file, "PDF-файл" %>
+      <%= file_field_tag :file, accept: "application/pdf", required: true, class: "rag-file" %>
+    </div>
+    <p><%= submit_tag "Загрузить в индекс", class: "btn-primary" %></p>
+  <% end %>
+
+  <% if @knowledge_documents.any? %>
+    <h3 class="rag-subheading">Документы</h3>
+    <ul class="rag-doc-list">
+      <% @knowledge_documents.each do |doc| %>
+        <li class="rag-doc-list__item">
+          <span class="rag-doc-title"><%= doc.display_title %></span>
+          <span class="badge rag-status rag-status--<%= doc.status %>"><%= doc.status %></span>
+          <% if doc.status == "ready" %>
+            <span class="muted"><%= doc.knowledge_chunks.count %> фрагментов</span>
+          <% end %>
+          <% if doc.error_message.present? %>
+            <span class="rag-error" title="<%= h doc.error_message %>">⚠ <%= truncate(doc.error_message, length: 80) %></span>
+          <% end %>
+          <%= button_to "Удалить", knowledge_document_path(doc, lead_id: params[:lead_id], tab: "rag"), method: :delete, class: "btn-secondary btn-small", form: { data: { turbo_confirm: "Удалить документ и все фрагменты?" } } %>
+        </li>
+      <% end %>
+    </ul>
+  <% else %>
+    <p class="muted">Пока нет загруженных документов.</p>
+  <% end %>
+</section>

@@ -1,0 +1,18 @@
+<div class="page">
+  <header class="page-header">
+    <h1>Лиды</h1>
+    <%= button_to "Выйти", logout_path, method: :delete, class: "btn-secondary" %>
+  </header>
+  <% if @leads.empty? %>
+    <p>Лидов пока нет. Запустите <code>bin/rails db:seed</code>.</p>
+  <% else %>
+    <ul class="lead-list">
+      <% @leads.each do |lead| %>
+        <li>
+          <%= link_to lead.company_name.presence || "Лид ##{lead.id}", lead_path(lead) %>
+          <span class="muted"><%= lead.stage %></span>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
+</div>

@@ -1,0 +1,20 @@
+<div class="auth-box">
+  <h1>Вход</h1>
+  <% if flash[:alert] %>
+    <p class="flash flash-alert"><%= flash[:alert] %></p>
+  <% end %>
+  <%= form_with url: login_path, method: :post, local: true do |f| %>
+    <p>
+      <label>Email<br>
+        <%= email_field_tag :email, params[:email], autocomplete: "username", required: true %>
+      </label>
+    </p>
+    <p>
+      <label>Пароль<br>
+        <%= password_field_tag :password, nil, autocomplete: "current-password", required: true %>
+      </label>
+    </p>
+    <p><%= submit_tag "Войти" %></p>
+  <% end %>
+  <p class="hint">Демо: <code>admin@example.com</code> / <code>password</code> (после <code>bin/rails db:seed</code>)</p>
+</div>
