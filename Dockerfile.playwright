@@ -1,0 +1,14 @@
+# Node + Playwright (браузеры предустановлены в базовом образе Microsoft)
+FROM mcr.microsoft.com/playwright:v1.49.1-jammy
+
+WORKDIR /app
+
+COPY playwright-worker/package.json ./
+RUN npm install --omit=dev
+
+COPY playwright-worker/server.mjs ./
+
+ENV NODE_ENV=production
+EXPOSE 3001
+
+CMD ["node", "server.mjs"]

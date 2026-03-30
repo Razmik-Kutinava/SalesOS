@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_29_220000) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_29_233000) do
   create_table "accounts", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "name", null: false
@@ -90,6 +90,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_29_220000) do
     t.datetime "updated_at", null: false
     t.index ["lead_id", "created_at"], name: "index_lead_events_on_lead_id_and_created_at"
     t.index ["lead_id"], name: "index_lead_events_on_lead_id"
+  end
+
+  create_table "lead_imports", force: :cascade do |t|
+    t.integer "account_id", null: false
+    t.json "column_mapping", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.text "error_message"
+    t.boolean "llm_mapping_used", default: false, null: false
+    t.json "preview_headers", default: [], null: false
+    t.json "result_summary", default: {}, null: false
+    t.string "status", default: "pending", null: false
+    t.datetime "updated_at", null: false
+    t.integer "user_id", null: false
+    t.index ["account_id", "created_at"], name: "index_lead_imports_on_account_id_and_created_at"
+    t.index ["account_id"], name: "index_lead_imports_on_account_id"
+    t.index ["user_id"], name: "index_lead_imports_on_user_id"
   end
 
   create_table "leads", force: :cascade do |t|
@@ -180,6 +196,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_29_220000) do
   add_foreign_key "knowledge_documents", "accounts"
   add_foreign_key "lead_documents", "leads"
   add_foreign_key "lead_events", "leads"
+  add_foreign_key "lead_imports", "accounts"
+  add_foreign_key "lead_imports", "users"
   add_foreign_key "leads", "accounts"
   add_foreign_key "leads", "users", column: "owner_id"
   add_foreign_key "pending_actions", "leads"

@@ -14,6 +14,7 @@ Rails.application.routes.draw do
 
   resources :leads, only: %i[index show]
   post "leads/:id/voice", to: "voice_commands#create", as: :voice_lead
+  post "leads/:id/fetch_url", to: "fetch_urls#create", as: :lead_fetch_url
   post "console/voice", to: "voice_commands#create_console", as: :voice_console
 
   post "knowledge/query", to: "knowledge_queries#create", as: :knowledge_query
@@ -23,6 +24,8 @@ Rails.application.routes.draw do
       post :text, action: :create_from_text
     end
   end
+
+  resources :lead_imports, only: %i[create show edit update]
 
   # Render dynamic PWA files from app/views/pwa/* (remember to link manifest in application.html.erb)
   # get "manifest" => "rails/pwa#manifest", as: :pwa_manifest

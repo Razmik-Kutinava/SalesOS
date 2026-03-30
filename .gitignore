@@ -34,6 +34,9 @@
 # Локальный клон whisper.cpp (~сотни МБ; не коммитить)
 /whisper.cpp/
 
+# Node (Playwright worker)
+/playwright-worker/node_modules/
+
 # Внутренние материалы (навыки/агенты ассистента — не коммитим)
 /.claude/
 

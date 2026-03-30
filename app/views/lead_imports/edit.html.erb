@@ -1,0 +1,25 @@
+<% content_for :title, "Маппинг импорта ##{@lead_import.id}" %>
+
+<div class="console-page lead-import-edit">
+  <header class="page-header">
+    <h1>Маппинг колонок — импорт #<%= @lead_import.id %></h1>
+    <%= link_to "Назад к отчёту", lead_import_path(@lead_import), class: "btn-secondary" %>
+  </header>
+
+  <p class="hint">Выберите колонку файла для каждого поля лида. Пустое значение — поле не заполняется. Минимум одно из полей «Компания» или «Email» нужно для создания лида.</p>
+
+  <%= form_with url: lead_import_path(@lead_import), method: :patch, local: true do %>
+    <fieldset class="mapping-fieldset">
+      <% lead_import_field_labels.each do |key, label| %>
+        <div class="mapping-row">
+          <label for="column_mapping_<%= key %>"><%= label %></label>
+          <% opts = [["— не сопоставлять —", ""]] + @headers.map { |h| [h, h] } %>
+          <%= select_tag "column_mapping[#{key}]", options_for_select(opts, @lead_import.column_mapping[key]), id: "column_mapping_#{key}" %>
+        </div>
+      <% end %>
+    </fieldset>
+    <p>
+      <%= submit_tag "Сохранить и запустить импорт снова", class: "btn-primary" %>
+    </p>
+  <% end %>
+</div>

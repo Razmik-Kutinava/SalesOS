@@ -249,3 +249,73 @@
 **Сделано:** `.gitignore` — `/.claude/`, `/docs/`; сняты с трека; README/CONTRIBUTING/CHANGELOG; удалены ветки Dependabot на origin.
 
 **Прогон:** `ruby bin/rails test` — **143 runs, 328 assertions, 0 failures, 0 errors, 5 skips**.
+
+---
+
+## 2026-03-29 — импорт лидов (CSV / Excel, FR-L-06)
+
+**План:** загрузка файла, эвристика колонок → поля `Lead`, опционально Ollama JSON-маппинг, джоб `ProcessLeadImportJob`, отчёт по строкам, ручное редактирование маппинга и повтор.
+
+**Сделано:**
+
+- Gems: `roo`, `csv` (Ruby 3.4+); миграция `lead_imports` + Active Storage `file`.
+- Модель `LeadImport`, джоб `ProcessLeadImportJob`, сервисы `Imports::SpreadsheetReader`, `Imports::ColumnMapper`, `Imports::LeadImportProcessor`.
+- Контроллер `LeadImportsController` (`create`, `show`, `edit`, `update`); вкладка консоли **`?tab=import`**; событие лида `lead_imported`.
+- Тесты: `column_mapper_test`, `lead_import_processor_test`, `lead_imports_test`; фикстура `sample_leads.csv`.
+
+**Прогон:** `bin/rails db:migrate` / `db:test:prepare`, затем `bin/rails test`.
+
+**Итог:** **147 runs, 351 assertions, 0 failures, 0 errors, 5 skips**.
+
+**Окружение:** Ruby 3.4 — в `Gemfile` добавлен явный `gem "csv"` (Roo требует `csv` после выноса из default gems). См. `test/README.md` (раздел про импорт).
+
+---
+
+## 2026-03-29 — Playwright worker + источники лидов на апрув
+
+**План:** каркас воркера вне Puma; клиент в Rails; allowlist доменов; список категорий источников (обогащение, поиск API, реестры) для согласования; ~30 сценариев тестов.
+
+**Сделано:**
+
+- **`LEAD_RESEARCH_SOURCES.md`** — черновик списка вендоров/типов источников (Apollo, ZoomInfo, Hunter, Serper, реестры, осторожность с LinkedIn) и порядок внедрения.
+- **`playwright-worker/`** — `server.mjs` (POST `/v1/fetch`, GET `/health`), `package.json`, README; **`Dockerfile.playwright`** + **`docker-compose.playwright.yml`**.
+- **`Fetch::PlaywrightClient`**, **`FetchUrlJob`**; переменные в **`.env.example`**; **`.gitignore`** — `playwright-worker/node_modules/`.
+- **Тесты:** `test/services/fetch/playwright_client_test.rb` (26), `test/jobs/fetch_url_job_test.rb` (4) — **30 сценариев**, WebMock без сети.
+
+**Прогон:** `bundle exec rails test`.
+
+**Итог:** **177 runs, 387 assertions, 0 failures, 0 errors, 5 skips**.
+
+---
+
+## 2026-03-30 — Playwright UI: fetch URL → LeadEvent
+
+**План:** добавить кнопку/форму в консоль → вызвать `FetchUrlJob` → сохранить результат в `LeadEvent` (`event_type: page_fetched`) → показать в истории лида.
+
+**Сделано:**
+
+- Контроллер `FetchUrlsController` + роут `POST /leads/:id/fetch_url`.
+- `FetchUrlJob` стал сохранять `LeadEvent` (`page_fetched`) с `title/finalUrl/text_excerpt/error`.
+- UI: Playwright “получить страницу” вынесен в отдельную вкладку `tab=parse` (а не в `leads`-деталку).
+- При `PLAYWRIGHT_FETCH_URL` не задан: форму блокируем и **не создаём** шумные `LeadEvent` (ConfigurationError больше не пишет события в историю).
+- Тесты: `test/controllers/fetch_urls_controller_test.rb` и обновление `test/jobs/fetch_url_job_test.rb`.
+
+**Прогон:** `bundle exec rails test`.
+
+**Итог:** **178 runs, 400 assertions, 0 failures, 0 errors, 5 skips**.
+
+Дополнительно: в `FetchUrlJob` сделал учёт `actor_user_id` как для `perform_now`, так и для `perform_later` (символы/строковые ключи в metadata) и прогнал subset тестов для job/controller.
+
+---
+
+## 2026-03-30 — Парсинг и поиск вкладка (отделили UI)
+
+**Сделано:**
+- Вкладка `tab=parse` теперь показывает **только** парсинг/поиск (форма получения страницы), без таблиц/истории/голоса.
+- Убраны `disabled` у input, чтобы можно было вводить URL сразу.
+- После сабмита показывается короткий блок «Последняя страница» (title/status/finalUrl) на той же вкладке.
+- Форма редиректит обратно на `tab=parse`.
+
+**Прогон:** `bundle exec rails test`
+
+**Итог:** **178 runs, 400 assertions, 0 failures, 0 errors, 5 skips**.

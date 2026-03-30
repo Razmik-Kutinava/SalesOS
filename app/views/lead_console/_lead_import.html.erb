@@ -1,0 +1,46 @@
+<section class="import-panel" aria-labelledby="import-heading">
+  <h2 id="import-heading">Импорт лидов (Excel / CSV)</h2>
+  <p class="hint">Загрузите <strong>.csv</strong>, <strong>.xlsx</strong> или <strong>.xls</strong>. Первая строка — заголовки колонок. Сопоставление полей выполняется автоматически; при необходимости откройте отчёт импорта и измените маппинг. Повторный запуск импорта <strong>создаёт новые лиды</strong> (дедупликации пока нет). Строка без «Компании» и без email пропускается.</p>
+
+  <%= form_with scope: :lead_import, url: lead_imports_path, local: true, html: { multipart: true, class: "import-form" } do |f| %>
+    <div class="import-form__row">
+      <%= f.file_field :file, accept: ".csv,.xlsx,.xls,application/vnd.ms-excel,text/csv", required: true %>
+    </div>
+    <div class="import-form__row">
+      <label>
+        <%= f.check_box :use_llm_mapping, {}, "1", "0" %>
+        Уточнить маппинг через <strong>Ollama</strong> (если доступен <code>OLLAMA_HOST</code>)
+      </label>
+    </div>
+    <p><%= f.submit "Загрузить и импортировать", class: "btn-primary" %></p>
+  <% end %>
+</section>
+
+<% if @recent_imports.present? %>
+  <section class="import-history" aria-labelledby="import-history-heading">
+    <h2 id="import-history-heading">Последние импорты</h2>
+    <table class="lead-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Статус</th>
+          <th>Создано лидов</th>
+          <th>Когда</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @recent_imports.each do |imp| %>
+          <% sum = imp.result_summary || {} %>
+          <tr>
+            <td><%= imp.id %></td>
+            <td><span class="badge badge--<%= imp.status %>"><%= lead_import_status_label(imp.status) %></span></td>
+            <td><%= sum["created"] || "—" %></td>
+            <td class="nowrap muted"><%= l(imp.created_at, format: :short) %></td>
+            <td><%= link_to "Отчёт", lead_import_path(imp), class: "lead-link" %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </section>
+<% end %>

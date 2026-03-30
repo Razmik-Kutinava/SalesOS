@@ -1,0 +1,14 @@
+# Опциональный сервис: Playwright fetch worker (не смешивать с Puma).
+# Запуск: docker compose -f docker-compose.playwright.yml up --build
+services:
+  playwright-fetch:
+    build:
+      context: .
+      dockerfile: Dockerfile.playwright
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: "3001"
+      # Пример: только демо-домены — замените на свой allowlist
+      ALLOWED_HOSTS: "example.com,www.wikipedia.org"
+      FETCH_TOKEN: "change-me-in-production"

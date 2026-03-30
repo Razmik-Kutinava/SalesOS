@@ -252,6 +252,45 @@ button[type="button"] {
   margin: 0 0 0.5rem;
 }
 
+/* Консоль: Playwright fetch */
+.console-fetch {
+  margin: 1rem 0 0;
+  padding: 1rem 1.1rem;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #e8eaf6;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.console-fetch h2 {
+  font-size: 1.05rem;
+  margin: 0 0 0.75rem;
+}
+
+.console-fetch__row {
+  margin-bottom: 0.75rem;
+}
+
+.console-fetch input[type="text"],
+.console-fetch input[type="url"] {
+  width: 100%;
+  padding: 0.45rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid #dadce0;
+}
+
+.console-fetch .hint {
+  margin: 0.75rem 0 0;
+}
+
+.console-fetch__result {
+  margin-top: 1rem;
+  padding: 0.65rem 0.75rem;
+  background: #f6f7fb;
+  border: 1px solid #e8eaf6;
+  border-radius: 8px;
+}
+
 .lead-card-inline {
   display: grid;
   grid-template-columns: 9rem 1fr;
@@ -505,4 +544,102 @@ button[type="button"] {
 
 .rag-text-form {
   margin-bottom: 1rem;
+}
+
+/* Импорт лидов (CSV / Excel) */
+.import-panel {
+  margin-bottom: 1.5rem;
+  padding: 1rem 1.1rem;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e8eaf6;
+}
+
+.import-form__row {
+  margin-bottom: 0.65rem;
+}
+
+.import-history {
+  margin-top: 1.5rem;
+}
+
+.lead-import-show .import-summary,
+.lead-import-edit .mapping-fieldset {
+  padding: 1rem;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #e8eaf6;
+  margin-bottom: 1rem;
+}
+
+.mapping-dl {
+  display: grid;
+  grid-template-columns: 10rem 1fr;
+  gap: 0.35rem 1rem;
+  margin: 0;
+}
+
+.mapping-dl dt {
+  margin: 0;
+  color: #5f6368;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.mapping-dl dd {
+  margin: 0;
+}
+
+.mono {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.88rem;
+  word-break: break-word;
+}
+
+.mapping-fieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+.mapping-row {
+  display: grid;
+  grid-template-columns: 9rem 1fr;
+  gap: 0.5rem 1rem;
+  align-items: center;
+  margin-bottom: 0.65rem;
+}
+
+.mapping-row select {
+  max-width: 28rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid #dadce0;
+}
+
+.import-results__stats {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.badge--queued {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+.badge--processing {
+  background: #fff3e0;
+  color: #e65100;
+}
+.badge--completed {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+.badge--failed {
+  background: #ffebee;
+  color: #c62828;
+}
+.badge--pending {
+  background: #f8f9fa;
+  color: #5f6368;
 }

@@ -43,6 +43,12 @@ gem "image_processing", "~> 1.2"
 # Извлечение текста из PDF для RAG (ingest)
 gem "pdf-reader", "~> 2.12"
 
+# Ruby 3.4+: csv вынесен из default gems — нужен для Roo/CSV.
+gem "csv"
+
+# Импорт лидов: Excel/CSV (см. docs/product/PRD.md Phase 2, FR-L-06)
+gem "roo", "~> 2.10"
+
 group :development, :test do
   # Загрузка `.env` в корне (OLLAMA_HOST и др.); не коммитить секреты — см. `.gitignore`
   gem "dotenv-rails"

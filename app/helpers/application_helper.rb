@@ -15,7 +15,29 @@ module ApplicationHelper
       "task_created" => "Задача создана",
       "delete_requested" => "Заявка на удаление",
       "lead_discarded" => "Лид удалён (архив)",
-      "lead_created_voice" => "Лид создан (голос)"
+      "lead_created_voice" => "Лид создан (голос)",
+      "lead_imported" => "Импорт строки",
+      "page_fetched" => "Playwright: страница"
     }.fetch(event_type.to_s, event_type.to_s)
+  end
+
+  def lead_import_field_labels
+    {
+      "company_name" => "Компания",
+      "contact_name" => "Контакт",
+      "email" => "Email",
+      "phone" => "Телефон",
+      "stage" => "Стадия"
+    }
+  end
+
+  def lead_import_status_label(status)
+    {
+      "pending" => "Ожидает",
+      "queued" => "В очереди",
+      "processing" => "Обработка",
+      "completed" => "Готово",
+      "failed" => "Ошибка"
+    }.fetch(status.to_s, status.to_s)
   end
 end

@@ -1,0 +1,76 @@
+<% content_for :title, "Импорт ##{@lead_import.id}" %>
+<% if %w[queued processing].include?(@lead_import.status) %>
+  <% content_for :head do %>
+    <meta http-equiv="refresh" content="3">
+  <% end %>
+<% end %>
+
+<div class="console-page lead-import-show">
+  <header class="page-header">
+    <h1>Импорт #<%= @lead_import.id %></h1>
+    <%= link_to "← К списку импортов", root_path(tab: "import"), class: "btn-secondary" %>
+    <%= button_to "Выйти", logout_path, method: :delete, class: "btn-secondary" %>
+  </header>
+
+  <p class="hint">
+    Статус: <span class="badge badge--<%= @lead_import.status %>"><%= lead_import_status_label(@lead_import.status) %></span>
+    <% if @lead_import.llm_mapping_used %>
+      · маппинг колонок: <strong>Ollama</strong> + эвристика
+    <% else %>
+      · маппинг: <strong>эвристика</strong>
+    <% end %>
+  </p>
+
+  <% if @lead_import.error_message.present? %>
+    <aside class="asr-banner asr-banner--stub" role="alert">
+      <%= @lead_import.error_message %>
+    </aside>
+  <% end %>
+
+  <section class="import-summary">
+    <h2>Заголовки файла</h2>
+    <p class="mono"><%= @lead_import.preview_headers.join(" · ") %></p>
+
+    <h2>Сопоставление полей</h2>
+    <dl class="mapping-dl">
+      <% lead_import_field_labels.each do |key, label| %>
+        <dt><%= label %></dt>
+        <dd><%= @lead_import.column_mapping[key].presence || "—" %></dd>
+      <% end %>
+    </dl>
+  </section>
+
+  <% sum = @lead_import.result_summary || {} %>
+  <% if sum["created"] %>
+    <section class="import-results">
+      <h2>Результат</h2>
+      <ul class="import-results__stats">
+        <li>Создано лидов: <strong><%= sum["created"] %></strong></li>
+        <li>Пропущено пустых строк: <strong><%= sum["skipped"] %></strong></li>
+        <li>Строк с ошибками: <strong><%= sum["error_rows"] || 0 %></strong></li>
+      </ul>
+
+      <% errors = sum["errors"] %>
+      <% if errors.is_a?(Array) && errors.any? %>
+        <h3>Ошибки по строкам</h3>
+        <table class="lead-table">
+          <thead>
+            <tr><th>Строка</th><th>Сообщение</th></tr>
+          </thead>
+          <tbody>
+            <% errors.each do |err| %>
+              <tr>
+                <td><%= err["row"] %></td>
+                <td><%= err["message"] %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      <% end %>
+    </section>
+  <% end %>
+
+  <p class="import-actions">
+    <%= link_to "Изменить маппинг и повторить", edit_lead_import_path(@lead_import), class: "btn-secondary" %>
+  </p>
+</div>

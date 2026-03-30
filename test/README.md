@@ -55,3 +55,12 @@ bin/rails test test/models/user_test.rb
 ## База данных в test
 
 Используется `storage/test.sqlite3` (см. `config/database.yml`). Перед прогоном: `bin/rails db:test:prepare`.
+
+## Импорт лидов (CSV / Excel, Roo)
+
+На **Ruby 3.4+** библиотека `csv` не входит в default gems — в `Gemfile` указаны `gem "csv"` и `gem "roo"`. Если при старте приложения видите `LoadError: cannot load such file -- csv`, выполните `bundle install`.
+
+## Playwright fetch worker
+
+Отдельный процесс **Node.js** в каталоге `playwright-worker/`; Rails обращается через `Fetch::PlaywrightClient` и `FetchUrlJob` (переменные `PLAYWRIGHT_*` в `.env.example`).  
+Тесты **без реального браузера**: WebMock. См. `playwright-worker/README.md`, `LEAD_RESEARCH_SOURCES.md` (список источников для лидов — на апрув).

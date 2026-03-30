@@ -14,12 +14,16 @@ class LeadConsoleController < ApplicationController
     @lead_events = load_lead_events
     @voice_post_path = voice_post_path_for_ui
     @knowledge_documents = current_user.account.knowledge_documents.order(created_at: :desc).limit(30)
+    @recent_imports = current_user.account.lead_imports.recent_first.limit(15) if @console_tab == "import"
+    @playwright_fetch_configured = if @console_tab == "parse"
+      Fetch::PlaywrightClient.new.configured?
+    end
   end
 
   private
 
   def console_tab_param
-    params[:tab].presence_in(%w[leads rag])
+    params[:tab].presence_in(%w[leads rag import parse])
   end
 
   def resolve_selected_lead

@@ -11,144 +11,221 @@
     <%= link_to "База знаний", root_path(lead_id: params[:lead_id], tab: "rag"),
           class: "console-tabs__tab #{'is-active' if @console_tab == 'rag'}",
           aria: (@console_tab == "rag" ? { current: "page" } : {}) %>
+    <%= link_to "Импорт", root_path(lead_id: params[:lead_id], tab: "import"),
+          class: "console-tabs__tab #{'is-active' if @console_tab == 'import'}",
+          aria: (@console_tab == "import" ? { current: "page" } : {}) %>
+    <%= link_to "Парсинг и поиск", root_path(lead_id: params[:lead_id], tab: "parse"),
+          class: "console-tabs__tab #{'is-active' if @console_tab == 'parse'}",
+          aria: (@console_tab == "parse" ? { current: "page" } : {}) %>
   </nav>
 
   <% if @console_tab == "rag" %>
     <p class="hint console-tabs-hint">Документы, вопросы по индексу и заметки on-the-fly. Голосовые команды и таблица лидов — на вкладке «Лиды и голос».</p>
     <%= render "knowledge_rag" %>
+  <% elsif @console_tab == "import" %>
+    <p class="hint console-tabs-hint">Загрузка таблицы лидов. Голос и таблица — на вкладке «Лиды и голос».</p>
+    <%= render "lead_import" %>
   <% else %>
-  <p class="hint">Таблица — контекст для команд по <strong>выбранному</strong> лиду (заметка, поля, задача, удаление). Если лидов нет — голосом можно <strong>создать лид</strong> («создай лид, компания …»).</p>
+  <% if @console_tab == "parse" %>
+    <p class="hint console-tabs-hint">Парсинг/поиск по URL через Playwright worker.</p>
 
-  <% if voice_asr_mode == :stub %>
-    <aside class="asr-banner asr-banner--stub" role="status">
-      <strong>Режим заглушки ASR.</strong> Речь не расшифровывается — подставляется тестовый текст.
-      Для настоящей транскрипции добавь в <code>.env</code> <code>OPENAI_API_KEY</code> (Whisper API) или
-      <code>WHISPER_BIN</code> + <code>WHISPER_MODEL</code> (локально). Подробнее: <code>docs/integrations/VOICE-PIPELINE.md</code>.
-    </aside>
-  <% elsif voice_asr_mode == :openai %>
-    <aside class="asr-banner asr-banner--ok" role="status">
-      Распознавание: <strong>OpenAI Whisper</strong> (по ключу).
-    </aside>
-  <% elsif voice_asr_mode == :local %>
-    <aside class="asr-banner asr-banner--ok" role="status">
-      Распознавание: <strong>локальный whisper.cpp</strong>.
-    </aside>
+    <section class="console-fetch">
+      <h2>Парсинг: получить страницу</h2>
+      <% if @selected_lead %>
+        <%= form_with url: lead_fetch_url_path(@selected_lead), method: :post, local: true, data: { turbo: false } do |f| %>
+          <div class="console-fetch__row">
+            <%= f.label :url, "URL" %>
+            <%= f.text_field :url, placeholder: "https://example.com/...", required: true %>
+          </div>
+          <div class="console-fetch__row">
+            <%= f.submit "Запросить", class: "btn-primary" %>
+          </div>
+        <% end %>
+      <% else %>
+        <p class="hint">Сначала выбери/создай лид на вкладке «Лиды и голос».</p>
+      <% end %>
+
+      <% unless @playwright_fetch_configured %>
+        <p class="hint">
+          PLAYWRIGHT_FETCH_URL не задан. Нужен запущенный worker (`playwright-worker`) и env в <code>.env</code>.
+        </p>
+      <% end %>
+
+      <% last_fetched = @lead_events.find { |ev| ev.event_type.to_s == "page_fetched" } %>
+      <% if last_fetched&.payload.is_a?(Hash) %>
+        <div class="console-fetch__result">
+          <p class="muted" style="margin: 0 0 0.25rem;">
+            Последняя страница
+          </p>
+          <p style="margin: 0;">
+            <strong><%= last_fetched.payload["title"].presence || "Страница" %></strong>
+            (<%= last_fetched.payload["statusCode"] || "—" %>)
+            — <%= last_fetched.payload["finalUrl"].presence || last_fetched.payload["url"] || "—" %>
+          </p>
+          <% if last_fetched.payload["ok"] == false && last_fetched.payload["error"].present? %>
+            <p style="margin: 0.4rem 0 0;">
+              Ошибка: <%= last_fetched.payload["error"] %>
+            </p>
+          <% elsif last_fetched.payload["text_excerpt"].present? %>
+            <p style="margin: 0.4rem 0 0;" class="mono">
+              <%= last_fetched.payload["text_excerpt"].to_s.truncate(400) %>
+            </p>
+          <% end %>
+        </div>
+      <% end %>
+    </section>
+  <% else %>
+    <p class="hint">Таблица — контекст для команд по <strong>выбранному</strong> лиду (заметка, поля, задача, удаление). Если лидов нет — голосом можно <strong>создать лид</strong> («создай лид, компания …»).</p>
   <% end %>
 
-  <% if @leads.empty? %>
-    <p class="empty-state">Активных лидов нет. Создай лид <strong>голосом</strong> (кнопка ниже) или выполни <code>bin/rails db:seed</code> и обнови страницу.</p>
-  <% else %>
-    <section class="console-table-wrap">
-      <table class="lead-table">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Компания</th>
-            <th>Контакт</th>
-            <th>Email</th>
-            <th>Телефон</th>
-            <th>Стадия</th>
-            <th>След. звонок</th>
-            <th>Score</th>
-            <th>Источник</th>
-            <th>Обновлён</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% @leads.each do |lead| %>
-            <% selected = @selected_lead&.id == lead.id %>
-            <tr class="<%= "is-selected" if selected %>">
-              <td><%= lead.id %></td>
-              <td>
-                <%= link_to lead.company_name.presence || "—", root_path(lead_id: lead.id, tab: "leads"), class: "lead-link" %>
-              </td>
-              <td><%= lead.contact_name.presence || "—" %></td>
-              <td><%= lead.email.presence || "—" %></td>
-              <td><%= lead.phone.presence || "—" %></td>
-              <td><span class="badge"><%= lead.stage %></span></td>
-              <td class="nowrap"><%= lead.next_call_at&.strftime("%Y-%m-%d %H:%M") || "—" %></td>
-              <td><%= lead.score %></td>
-              <td><%= lead.source %></td>
-              <td class="nowrap muted"><%= l(lead.updated_at, format: :short) %></td>
+  <% if @console_tab == "leads" %>
+    <% if voice_asr_mode == :stub %>
+      <aside class="asr-banner asr-banner--stub" role="status">
+        <strong>Режим заглушки ASR.</strong> Речь не расшифровывается — подставляется тестовый текст.
+        Для настоящей транскрипции добавь в <code>.env</code> <code>OPENAI_API_KEY</code> (Whisper API) или
+        <code>WHISPER_BIN</code> + <code>WHISPER_MODEL</code> (локально). Подробнее: <code>docs/integrations/VOICE-PIPELINE.md</code>.
+      </aside>
+    <% elsif voice_asr_mode == :openai %>
+      <aside class="asr-banner asr-banner--ok" role="status">
+        Распознавание: <strong>OpenAI Whisper</strong> (по ключу).
+      </aside>
+    <% elsif voice_asr_mode == :local %>
+      <aside class="asr-banner asr-banner--ok" role="status">
+        Распознавание: <strong>локальный whisper.cpp</strong>.
+      </aside>
+    <% end %>
+  <% end %>
+
+  <% if @console_tab == "leads" %>
+    <% if @leads.empty? %>
+      <p class="empty-state">Активных лидов нет. Создай лид <strong>голосом</strong> (кнопка ниже) или выполни <code>bin/rails db:seed</code> и обнови страницу.</p>
+    <% else %>
+      <section class="console-table-wrap">
+        <table class="lead-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Компания</th>
+              <th>Контакт</th>
+              <th>Email</th>
+              <th>Телефон</th>
+              <th>Стадия</th>
+              <th>След. звонок</th>
+              <th>Score</th>
+              <th>Источник</th>
+              <th>Обновлён</th>
             </tr>
-          <% end %>
-        </tbody>
-      </table>
-    </section>
+          </thead>
+          <tbody>
+            <% @leads.each do |lead| %>
+              <% selected = @selected_lead&.id == lead.id %>
+              <tr class="<%= "is-selected" if selected %>">
+                <td><%= lead.id %></td>
+                <td>
+                  <%= link_to lead.company_name.presence || "—", root_path(lead_id: lead.id, tab: "leads"), class: "lead-link" %>
+                </td>
+                <td><%= lead.contact_name.presence || "—" %></td>
+                <td><%= lead.email.presence || "—" %></td>
+                <td><%= lead.phone.presence || "—" %></td>
+                <td><span class="badge"><%= lead.stage %></span></td>
+                <td class="nowrap"><%= lead.next_call_at&.strftime("%Y-%m-%d %H:%M") || "—" %></td>
+                <td><%= lead.score %></td>
+                <td><%= lead.source %></td>
+                <td class="nowrap muted"><%= l(lead.updated_at, format: :short) %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </section>
+    <% end %>
+
+    <% if @selected_lead %>
+      <section class="console-detail">
+        <h2>Выбранный лид #<%= @selected_lead.id %></h2>
+        <dl class="lead-card-inline">
+          <dt>Компания</dt><dd><%= @selected_lead.company_name.presence || "—" %></dd>
+          <dt>Контакт</dt><dd><%= @selected_lead.contact_name.presence || "—" %></dd>
+          <dt>Email</dt><dd><%= @selected_lead.email.presence || "—" %></dd>
+          <dt>Телефон</dt><dd><%= @selected_lead.phone.presence || "—" %></dd>
+          <dt>Стадия</dt><dd><%= @selected_lead.stage %></dd>
+          <dt>След. звонок</dt><dd><%= @selected_lead.next_call_at&.iso8601 || "—" %></dd>
+        </dl>
+      </section>
+
+      <section class="console-events" aria-labelledby="events-heading">
+        <h2 id="events-heading">История по лиду (голос и правки)</h2>
+        <% if @lead_events.blank? %>
+          <p class="muted">Пока нет событий. После голосовой команды «добавь заметку» или смены полей здесь появятся записи.</p>
+        <% else %>
+          <ul class="event-list">
+            <% @lead_events.each do |ev| %>
+              <li class="event-list__item">
+                <span class="event-list__time"><%= l(ev.created_at, format: :short) %></span>
+                <span class="badge"><%= lead_event_label(ev.event_type) %></span>
+                <span class="event-list__body">
+                  <% if ev.event_type == "voice_note" && ev.payload.is_a?(Hash) %>
+                    <%= ev.payload["body"].presence || ev.payload.to_json %>
+                  <% elsif ev.event_type == "lead_updated" && ev.payload.is_a?(Hash) %>
+                    Обновлены поля: <%= Array(ev.payload["fields"]).join(", ") %>
+                  <% elsif ev.event_type == "task_created" && ev.payload.is_a?(Hash) %>
+                    <%= ev.payload["title"].presence || "Задача ##{ev.payload['task_id']}" %>
+                  <% elsif ev.event_type == "lead_discarded" %>
+                    Лид убран из активных (архив)
+                  <% elsif ev.event_type == "lead_created_voice" %>
+                    Лид создан голосом
+                  <% elsif ev.event_type == "lead_imported" && ev.payload.is_a?(Hash) %>
+                    Строка файла <%= ev.payload["row"] %> (импорт #<%= ev.payload["lead_import_id"] %>)
+                  <% elsif ev.event_type == "page_fetched" && ev.payload.is_a?(Hash) %>
+                    <%= ev.payload["title"].presence || "Страница" %>
+                    (<%= ev.payload["statusCode"] || "—" %>)
+                    — <%= ev.payload["finalUrl"].presence || ev.payload["url"] || "—" %>
+                    <% if ev.payload["ok"] == false && ev.payload["error"].present? %>
+                      : <%= ev.payload["error"] %>
+                    <% elsif ev.payload["text_excerpt"].present? %>
+                      —
+                      <%= ev.payload["text_excerpt"].to_s.truncate(200) %>
+                    <% end %>
+                  <% else %>
+                    <%= ev.payload.present? ? ev.payload.to_json : "—" %>
+                  <% end %>
+                </span>
+              </li>
+            <% end %>
+          </ul>
+        <% end %>
+      </section>
+    <% end %>
   <% end %>
 
-  <% if @selected_lead %>
-    <section class="console-detail">
-      <h2>Выбранный лид #<%= @selected_lead.id %></h2>
-      <dl class="lead-card-inline">
-        <dt>Компания</dt><dd><%= @selected_lead.company_name.presence || "—" %></dd>
-        <dt>Контакт</dt><dd><%= @selected_lead.contact_name.presence || "—" %></dd>
-        <dt>Email</dt><dd><%= @selected_lead.email.presence || "—" %></dd>
-        <dt>Телефон</dt><dd><%= @selected_lead.phone.presence || "—" %></dd>
-        <dt>Стадия</dt><dd><%= @selected_lead.stage %></dd>
-        <dt>След. звонок</dt><dd><%= @selected_lead.next_call_at&.iso8601 || "—" %></dd>
-      </dl>
-    </section>
-
-    <section class="console-events" aria-labelledby="events-heading">
-      <h2 id="events-heading">История по лиду (голос и правки)</h2>
-      <% if @lead_events.blank? %>
-        <p class="muted">Пока нет событий. После голосовой команды «добавь заметку» или смены полей здесь появятся записи.</p>
-      <% else %>
-        <ul class="event-list">
-          <% @lead_events.each do |ev| %>
-            <li class="event-list__item">
-              <span class="event-list__time"><%= l(ev.created_at, format: :short) %></span>
-              <span class="badge"><%= lead_event_label(ev.event_type) %></span>
-              <span class="event-list__body">
-                <% if ev.event_type == "voice_note" && ev.payload.is_a?(Hash) %>
-                  <%= ev.payload["body"].presence || ev.payload.to_json %>
-                <% elsif ev.event_type == "lead_updated" && ev.payload.is_a?(Hash) %>
-                  Обновлены поля: <%= Array(ev.payload["fields"]).join(", ") %>
-                <% elsif ev.event_type == "task_created" && ev.payload.is_a?(Hash) %>
-                  <%= ev.payload["title"].presence || "Задача ##{ev.payload['task_id']}" %>
-                <% elsif ev.event_type == "lead_discarded" %>
-                  Лид убран из активных (архив)
-                <% elsif ev.event_type == "lead_created_voice" %>
-                  Лид создан голосом
-                <% else %>
-                  <%= ev.payload.present? ? ev.payload.to_json : "—" %>
-                <% end %>
-              </span>
-            </li>
-          <% end %>
-        </ul>
-      <% end %>
-    </section>
+  <% if @console_tab == "leads" %>
+    <div class="page voice-console"
+         data-controller="voice"
+         data-voice-endpoint-value="<%= @voice_post_path %>"
+         data-voice-reload-on-success-value="true">
+      <section class="voice-panel">
+        <h2>Голосовые команды</h2>
+        <% if @leads.empty? %>
+          <p class="hint">Нет активных лидов — команда <strong>create_lead</strong>: «Создай лид, компания Рога и копыта, контакт Иван».</p>
+        <% else %>
+          <p class="hint">Запись → Whisper → Ollama → действие для лида <strong>#<%= @selected_lead&.id || @leads.first.id %></strong> (заметка, поля, задача, «удали этот лид»). Можно и <strong>создать ещё один лид</strong> той же фразой.</p>
+        <% end %>
+        <p>
+          <button type="button" data-action="voice#start" data-voice-target="startBtn">Записать</button>
+          <button type="button" data-action="voice#stop" data-voice-target="stopBtn" disabled>Стоп и отправить</button>
+        </p>
+        <p data-voice-target="status" class="status-line" aria-live="polite"></p>
+        <div class="voice-output">
+          <div>
+            <strong>Транскрипт</strong>
+            <pre data-voice-target="transcript" class="transcript-box"></pre>
+          </div>
+          <div>
+            <strong>Ответ / результат</strong>
+            <pre data-voice-target="reply" class="reply-box"></pre>
+          </div>
+        </div>
+      </section>
+    </div>
   <% end %>
-
-  <div class="page voice-console"
-       data-controller="voice"
-       data-voice-endpoint-value="<%= @voice_post_path %>"
-       data-voice-reload-on-success-value="true">
-    <section class="voice-panel">
-      <h2>Голосовые команды</h2>
-      <% if @leads.empty? %>
-        <p class="hint">Нет активных лидов — команда <strong>create_lead</strong>: «Создай лид, компания Рога и копыта, контакт Иван».</p>
-      <% else %>
-        <p class="hint">Запись → Whisper → Ollama → действие для лида <strong>#<%= @selected_lead&.id || @leads.first.id %></strong> (заметка, поля, задача, «удали этот лид»). Можно и <strong>создать ещё один лид</strong> той же фразой.</p>
-      <% end %>
-      <p>
-        <button type="button" data-action="voice#start" data-voice-target="startBtn">Записать</button>
-        <button type="button" data-action="voice#stop" data-voice-target="stopBtn" disabled>Стоп и отправить</button>
-      </p>
-      <p data-voice-target="status" class="status-line" aria-live="polite"></p>
-      <div class="voice-output">
-        <div>
-          <strong>Транскрипт</strong>
-          <pre data-voice-target="transcript" class="transcript-box"></pre>
-        </div>
-        <div>
-          <strong>Ответ / результат</strong>
-          <pre data-voice-target="reply" class="reply-box"></pre>
-        </div>
-      </div>
-    </section>
-  </div>
   <% end %>
 </div>
