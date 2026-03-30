@@ -5,19 +5,89 @@
  */
 import http from "http";
 import { chromium } from "playwright";
+import dns from "dns";
+import net from "net";
 
 const PORT = Number(process.env.PORT || 3001);
 const TOKEN = (process.env.FETCH_TOKEN || "").trim();
-const allowed = new Set(
+const envAllowed = new Set(
   (process.env.ALLOWED_HOSTS || "")
     .split(",")
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean)
 );
 
-function hostAllowed(hostname) {
-  if (allowed.size === 0) return false;
-  return allowed.has(hostname.toLowerCase());
+function normalizeAllowedHosts(hosts) {
+  const arr = Array.isArray(hosts) ? hosts : [];
+  return new Set(
+    arr
+      .map((s) => String(s).trim().toLowerCase())
+      .filter(Boolean)
+  );
+}
+
+function isPrivateIPv4(ip) {
+  // Very small helper; enough for SSRF protection.
+  const parts = ip.split(".").map((x) => Number(x));
+  if (parts.length !== 4 || parts.some((n) => Number.isNaN(n))) return false;
+  const [a, b] = parts;
+  if (a === 10) return true;
+  if (a === 127) return true;
+  if (a === 169 && b === 254) return true;
+  if (a === 172 && b >= 16 && b <= 31) return true;
+  if (a === 192 && b === 168) return true;
+  return false;
+}
+
+function isPrivateIPv6(ip) {
+  // Basic checks:
+  // - loopback ::1
+  // - unique local fc00::/7
+  // - link-local fe80::/10
+  if (ip === "::1") return true;
+  const lower = ip.toLowerCase();
+  if (lower.startsWith("fc") || lower.startsWith("fd")) return true;
+  if (lower.startsWith("fe80:")) return true;
+  return false;
+}
+
+function safeHostLiteral(hostname) {
+  const lower = hostname.toLowerCase();
+  if (lower === "localhost" || lower.endsWith(".localhost")) return false;
+  if (lower === "0.0.0.0") return false;
+
+  if (net.isIP(lower) === 4) return !isPrivateIPv4(lower);
+  if (net.isIP(lower) === 6) return !isPrivateIPv6(lower);
+  return true; // domain name: check via DNS in safeHostForRequest()
+}
+
+async function safeHostForRequest(hostname) {
+  if (!safeHostLiteral(hostname)) return false;
+
+  // If it's not an IP literal, resolve and block private IP targets.
+  if (net.isIP(hostname) === 0) {
+    try {
+      const res = await dns.promises.lookup(hostname, { all: true });
+      const addrs = Array.isArray(res) ? res.map((r) => r.address) : [];
+      if (addrs.length === 0) return false;
+      for (const ip of addrs) {
+        if (net.isIP(ip) === 4) {
+          if (isPrivateIPv4(ip)) return false;
+        } else if (net.isIP(ip) === 6) {
+          if (isPrivateIPv6(ip)) return false;
+        }
+      }
+    } catch {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function hostAllowed(hostname, allowedSet) {
+  if (!allowedSet || allowedSet.size === 0) return false;
+  return allowedSet.has(hostname.toLowerCase());
 }
 
 async function handle(req, res) {
@@ -74,9 +144,19 @@ async function handle(req, res) {
     return;
   }
 
-  if (!hostAllowed(u.hostname)) {
+  const requestAllowedHosts = normalizeAllowedHosts(json.allowedHosts);
+  const allowedSet = requestAllowedHosts.size > 0 ? requestAllowedHosts : envAllowed;
+
+  if (!hostAllowed(u.hostname, allowedSet)) {
     res.writeHead(403, { "Content-Type": "application/json; charset=utf-8" });
     res.end(JSON.stringify({ ok: false, error: "host_not_allowed" }));
+    return;
+  }
+
+  const safe = await safeHostForRequest(u.hostname);
+  if (!safe) {
+    res.writeHead(403, { "Content-Type": "application/json; charset=utf-8" });
+    res.end(JSON.stringify({ ok: false, error: "unsafe_host" }));
     return;
   }
 

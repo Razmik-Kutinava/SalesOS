@@ -30,7 +30,14 @@ module Fetch
     end
 
     def self.parse_allowed_hosts(raw)
-      raw.to_s.split(",").map { |s| s.strip.downcase }.reject(&:blank?).to_set
+      parts =
+        case raw
+        when Array then raw
+        when Set then raw.to_a
+        else raw.to_s.split(",")
+        end
+
+      parts.map { |s| s.to_s.strip.downcase }.reject(&:blank?).to_set
     end
 
     def configured?
@@ -39,19 +46,27 @@ module Fetch
 
     # @param wait_until [String] "load" или "domcontentloaded"
     # @return [Hash] ответ воркера (ключи string)
-    def fetch(url:, wait_until: "load", timeout_ms: nil)
+    def fetch(url:, wait_until: "load", timeout_ms: nil, allowed_hosts: nil)
       raise ConfigurationError, "PLAYWRIGHT_FETCH_URL не задан" unless configured?
 
       uri = parse_http_url!(url)
       hostname = uri.host.to_s.downcase
-      raise NotAllowedError, "Домен не в allowlist: #{hostname}" unless host_allowed?(hostname)
+      allowed_set = parse_allowed_hosts(allowed_hosts)
+      raise NotAllowedError, "Запрещённый/небезопасный хост: #{hostname}" unless safe_hostname?(hostname)
+
+      if allowed_set.present?
+        raise NotAllowedError, "Домен не в allowlist запроса: #{hostname}" unless allowed_set.include?(hostname)
+      else
+        raise NotAllowedError, "Домен не в allowlist: #{hostname}" unless host_allowed?(hostname)
+      end
 
       target = URI.join("#{@base_url}/", "v1/fetch")
       body = JSON.generate(
         {
           "url" => url.to_s,
           "waitUntil" => wait_until.to_s == "domcontentloaded" ? "domcontentloaded" : "load",
-          "timeout" => timeout_ms
+          "timeout" => timeout_ms,
+          "allowedHosts" => allowed_set.to_a.presence
         }.compact
       )
 
@@ -92,6 +107,25 @@ module Fetch
       return false if @allowed_hosts.empty?
 
       @allowed_hosts.include?(hostname)
+    end
+
+    def safe_hostname?(hostname)
+      # Безопасность от SSRF: запрещаем loopback и private IP, если host — literal IP/localhost.
+      return false if hostname == "localhost" || hostname.end_with?(".localhost")
+
+      ip = hostname
+      return true unless ip.match?(/\A\d{1,3}(\.\d{1,3}){3}\z|\A[0-9a-fA-F:]+\z/)
+
+      begin
+        require "ipaddr"
+        addr = IPAddr.new(ip)
+        return false if addr.loopback?
+        return false if addr.private?
+        return false if addr.link_local?
+        return true
+      rescue ArgumentError
+        true
+      end
     end
   end
 end

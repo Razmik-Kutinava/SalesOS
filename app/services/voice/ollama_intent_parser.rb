@@ -166,7 +166,10 @@ module Voice
         "phone=#{lead.phone}",
         "stage=#{lead.stage}",
         "score=#{lead.score}",
-        "next_call_at=#{lead.next_call_at&.iso8601}"
+        "next_call_at=#{lead.next_call_at&.iso8601}",
+        (lead.metadata.dig("search_outcome", "summary").present? ?
+          "search_outcome=#{lead.metadata.dig("search_outcome", "summary").to_s.truncate(600)}" :
+          nil)
       ].join("\n")
     end
 

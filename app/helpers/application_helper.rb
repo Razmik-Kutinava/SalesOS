@@ -17,7 +17,9 @@ module ApplicationHelper
       "lead_discarded" => "Лид удалён (архив)",
       "lead_created_voice" => "Лид создан (голос)",
       "lead_imported" => "Импорт строки",
-      "page_fetched" => "Playwright: страница"
+      "page_fetched" => "Playwright: страница",
+      "search_performed" => "Search: запрос",
+      "search_approved" => "Search: одобрено"
     }.fetch(event_type.to_s, event_type.to_s)
   end
 

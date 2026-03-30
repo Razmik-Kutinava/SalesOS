@@ -15,6 +15,7 @@ Rails.application.routes.draw do
   resources :leads, only: %i[index show]
   post "leads/:id/voice", to: "voice_commands#create", as: :voice_lead
   post "leads/:id/fetch_url", to: "fetch_urls#create", as: :lead_fetch_url
+  post "leads/:id/search", to: "search_queries#create", as: :lead_search
   post "console/voice", to: "voice_commands#create_console", as: :voice_console
 
   post "knowledge/query", to: "knowledge_queries#create", as: :knowledge_query

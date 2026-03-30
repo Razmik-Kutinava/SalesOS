@@ -319,3 +319,24 @@
 **Прогон:** `bundle exec rails test`
 
 **Итог:** **178 runs, 400 assertions, 0 failures, 0 errors, 5 skips**.
+
+---
+
+## 2026-03-30 — Подключили поиск (Serper/Tavily/Brave) + Ollama verifier + Playwright парсер
+
+**Сделано:**
+- Добавлены сервисы поиска: `Search::SerperClient`, `Search::TavilyClient`, `Search::BraveClient` и агрегация (`Search::Aggregator`).
+- Добавлен контур `Search::SearchAndParse`: search -> Ollama select -> Playwright fetch выбранных страниц -> Ollama verify/approve -> запись `LeadEvent` (`search_performed`, `search_approved`).
+- Расширена вкладка `tab=parse` в `app/views/lead_console/show.html.erb` формой “Поиск: найти и проверить” и показом последнего `search_approved`.
+- Добавлен контроллер `SearchQueriesController#create` и роут `POST /leads/:id/search`.
+
+**Тесты:**
+- `test/controllers/search_queries_controller_test.rb`
+  - Сценарий “одобряем”: 3 поисковика (WebMock) -> Ollama select (WebMock) -> Playwright fetch (WebMock) -> Ollama verify (WebMock) -> проверка, что обновились поля лида и создан `search_approved`.
+  - Сценарий “не одобряем”: выбранный Ollama домен не проходит allowlist, Playwright fetch не получается, итог — `search_approved` с `needs_manual_review=true`.
+- `test/services/search/aggregator_test.rb`
+  - Проверка дедупликации: canonicalize_url режет `utm_*` и `gclid/fbclid`, чтобы один и тот же кандидат не проходил дважды.
+
+**Прогон:** `bin/rails test test/controllers/search_queries_controller_test.rb`
+
+**Итог:** тесты проходят (exit code 0).

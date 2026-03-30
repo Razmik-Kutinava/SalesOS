@@ -27,7 +27,99 @@
     <%= render "lead_import" %>
   <% else %>
   <% if @console_tab == "parse" %>
-    <p class="hint console-tabs-hint">Парсинг/поиск по URL через Playwright worker.</p>
+    <p class="hint console-tabs-hint">Поиск (Serper/Tavily/Brave) + парсинг/проверка выбранных страниц через Playwright.</p>
+
+    <section class="console-search">
+      <h2>Поиск: найти и проверить</h2>
+      <% if @selected_lead %>
+        <%= form_with url: lead_search_path(@selected_lead), method: :post, local: true, data: { turbo: false } do |f| %>
+          <div class="console-fetch__row">
+            <%= f.label :query, "Запрос" %>
+            <%= f.text_field :query, placeholder: "Например: Acme careers, вакансии Acme, новости Acme, экономика для отрасли", required: true %>
+          </div>
+          <div class="console-fetch__row">
+            <%= f.label :trusted_domains, "Надёжные домены (опционально)" %>
+            <%= f.text_field :trusted_domains, placeholder: "domain1.com,domain2.com", value: params[:trusted_domains].presence %>
+          </div>
+          <div class="console-fetch__row">
+            <%= f.submit "Найти и проверить", class: "btn-primary" %>
+          </div>
+        <% end %>
+      <% else %>
+        <p class="hint">Сначала выбери/создай лид на вкладке «Лиды и голос».</p>
+      <% end %>
+
+      <% last_search = @lead_events.find { |ev| ev.event_type.to_s == "search_approved" } %>
+      <% if last_search&.payload.is_a?(Hash) %>
+        <div class="console-fetch__result">
+          <p class="muted" style="margin: 0 0 0.25rem;">
+            Последний поиск / проверка
+          </p>
+
+          <% approved = Array(last_search.payload["approved_sources"]) %>
+          <p style="margin: 0;">
+            Одобрено источников: <strong><%= approved.size %></strong>
+            <% if last_search.payload["needs_manual_review"] %>
+              — нужен ручной контроль
+            <% end %>
+          </p>
+
+          <% if approved.any? %>
+            <ul style="margin: 0.75rem 0 0; padding-left: 1.1rem;">
+              <% approved.first(10).each do |src| %>
+                <li>
+                  <%= src["url"].presence || "—" %>
+                  <% if src["reason"].present? %>
+                    <span class="muted">: <%= src["reason"].to_s.truncate(120) %></span>
+                  <% end %>
+                </li>
+              <% end %>
+            </ul>
+          <% end %>
+
+          <% updates = last_search.payload["lead_updates"].is_a?(Hash) ? last_search.payload["lead_updates"] : {} %>
+          <% if updates.present? %>
+            <p style="margin: 0.75rem 0 0;">
+              Извлечено поля: <span class="muted"><%= updates.keys.join(", ") %></span>
+            </p>
+          <% end %>
+
+          <% if last_search.payload["outcome_summary"].present? %>
+            <div style="margin-top: 0.75rem;">
+              <p class="muted" style="margin: 0 0 0.25rem;">
+                Итог (что нашли и что подтвердили)
+              </p>
+              <textarea readonly
+                        rows="4"
+                        style="width: 100%; border-radius: 8px; padding: 0.75rem; font-family: monospace;"
+              ><%= last_search.payload["outcome_summary"] %></textarea>
+            </div>
+          <% end %>
+
+          <% if last_search.payload["what_to_do_options"].is_a?(Array) && last_search.payload["what_to_do_options"].any? %>
+            <div style="margin-top: 0.75rem;">
+              <p class="muted" style="margin: 0 0 0.25rem;">
+                Варианты “что делать дальше” (выбор за тобой голосом)
+              </p>
+              <ul style="margin: 0; padding-left: 1.1rem;">
+                <% last_search.payload["what_to_do_options"].first(6).each do |opt| %>
+                  <li>
+                    <strong><%= opt["title"].presence || "Вариант" %></strong>:
+                    <span class="muted"><%= opt["description"].presence || "" %></span>
+                  </li>
+                <% end %>
+              </ul>
+            </div>
+          <% end %>
+
+          <% if last_search.payload["verification_reason"].present? %>
+            <p style="margin: 0.5rem 0 0;" class="muted">
+              <%= last_search.payload["verification_reason"] %>
+            </p>
+          <% end %>
+        </div>
+      <% end %>
+    </section>
 
     <section class="console-fetch">
       <h2>Парсинг: получить страницу</h2>
